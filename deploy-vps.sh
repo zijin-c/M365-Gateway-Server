@@ -53,6 +53,8 @@ fi
 if [ "$HAS_DOCKER" = true ]; then
     echo -e "${GREEN}检测到 Docker 和 Docker Compose，推荐使用容器化部署。${NC}"
     echo -e "${YELLOW}[3/4] 正在构建并启动 Docker 容器...${NC}"
+    # 预创建持久化目录并赋予权限，避免 Docker 挂载时出现 Linux 权限不足
+    mkdir -p ./data && chmod -R 777 ./data
     docker compose up --build -d
     echo -e "${GREEN}Docker 容器已在后台启动！${NC}"
 
