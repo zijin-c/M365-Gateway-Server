@@ -1,0 +1,32 @@
+{
+  "name": "m365-gateway-server",
+  "version": "0.1.2",
+  "description": "Self-hosted Microsoft 365 gateway using a local Workers-compatible runtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist/server-worker",
+    "build:server": "wrangler deploy --dry-run --outdir dist/server-worker",
+    "start": "node server.mjs",
+    "start:production": "node server.mjs",
+    "generate-keys": "node scripts/generate-keys.mjs",
+    "healthcheck": "node scripts/server-healthcheck.mjs",
+    "check": "npm run check:no-docs && npm run check:functional && npm run typecheck && npm run check:ui && npm test",
+    "check:functional": "node scripts/check-functional-safety.mjs",
+    "check:no-docs": "node scripts/check-no-docs.mjs",
+    "check:ui": "node scripts/check-admin-ui.mjs",
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "types": "wrangler types src/worker-configuration.d.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "miniflare": "latest",
+    "wrangler": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "latest",
+    "typescript": "latest",
+    "vitest": "^4.1.0"
+  }
+}

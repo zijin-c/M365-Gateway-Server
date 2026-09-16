@@ -1,0 +1,30 @@
+# ==============================================================================
+# M365 Gateway Caddy 反向代理示例
+# Caddy 默认自动管理并申请 Let's Encrypt / ZeroSSL 证书
+# ==============================================================================
+
+your-domain.com {
+    # 反向代理到本地网关端口
+    reverse_proxy 127.0.0.1:8787 {
+        # 流式传输响应优化：关闭缓冲并配置超时
+        flush_interval -1
+
+        transport http {
+            read_timeout 600s
+            write_timeout 600s
+        }
+    }
+
+    # 客户端请求体大小上限（多模态图像/附件）
+    request_body {
+        max_size 50MB
+    }
+
+    # 日志输出
+    log {
+        output file /var/log/caddy/m365_gateway.log {
+            roll_size 20mb
+            roll_keep 5
+        }
+    }
+}

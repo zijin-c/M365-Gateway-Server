@@ -1,0 +1,2424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M365 Gateway 运维控制台 · 天体动态光影玻璃中控</title>
+  <style>
+    :root {
+      /* 天体动力学坐标与动态光影变量 */
+      --active-celestial-x: 15vw;
+      --active-celestial-y: 58px;
+      --sun-x: 15vw;
+      --sun-y: 58px;
+      --moon-x: 15vw;
+      --moon-y: 58px;
+      --shadow-dir-x: -15px;
+      --shadow-dir-y: 22px;
+      --highlight-angle: 120deg;
+      
+      /* 黑夜模式变量 (默认深黑) */
+      --bg-color: #000000;
+      --glass-bg: rgba(255, 255, 255, 0.035);
+      --glass-bg-hover: rgba(255, 255, 255, 0.065);
+      --glass-bg-active: rgba(255, 255, 255, 0.095);
+      
+      --glass-border: rgba(255, 255, 255, 0.11);
+      --glass-border-light: rgba(255, 255, 255, 0.38);
+      --glass-border-left: rgba(255, 255, 255, 0.25);
+      --glass-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.95);
+      --glass-inset-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
+      --glass-blur: blur(40px) saturate(180%);
+      
+      --sidebar-glass: rgba(10, 10, 10, 0.68);
+      --topbar-glass: rgba(10, 10, 10, 0.72);
+      
+      --accent-cyan: #38bdf8;
+      --accent-cyan-glow: rgba(56, 189, 248, 0.35);
+      --accent-indigo: #818cf8;
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      
+      --text-main: #ffffff;
+      --text-secondary: #cbd5e1;
+      --text-dim: #718096;
+      
+      --card-sub-bg: rgba(255, 255, 255, 0.02);
+      --table-border: rgba(255, 255, 255, 0.07);
+      --input-bg: rgba(255, 255, 255, 0.04);
+      --modal-mask: rgba(0, 0, 0, 0.8);
+      
+      --radius-xl: 20px;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+    }
+
+    /* 白昼模式 (纯白日光) */
+    body.theme-day {
+      --bg-color: #ffffff;
+      --glass-bg: rgba(255, 255, 255, 0.76);
+      --glass-bg-hover: rgba(255, 255, 255, 0.9);
+      --glass-bg-active: rgba(255, 255, 255, 0.98);
+      
+      --glass-border: rgba(0, 0, 0, 0.08);
+      --glass-border-light: rgba(255, 255, 255, 0.95);
+      --glass-border-left: rgba(255, 255, 255, 0.9);
+      --glass-shadow: 0 14px 35px -8px rgba(0, 0, 0, 0.08);
+      --glass-inset-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+      --glass-blur: blur(30px) saturate(180%);
+      
+      --sidebar-glass: rgba(248, 250, 252, 0.82);
+      --topbar-glass: rgba(248, 250, 252, 0.88);
+      
+      --accent-cyan: #0284c7;
+      --accent-cyan-glow: rgba(2, 132, 199, 0.2);
+      --accent-indigo: #4f46e5;
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+      
+      --text-main: #0f172a;
+      --text-secondary: #475569;
+      --text-dim: #94a3b8;
+      
+      --card-sub-bg: rgba(0, 0, 0, 0.025);
+      --table-border: rgba(0, 0, 0, 0.06);
+      --input-bg: rgba(0, 0, 0, 0.035);
+      --modal-mask: rgba(15, 23, 42, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background-color 0.8s ease, color 0.5s ease;
+    }
+
+    /* ==========================================================================
+       天体昼夜动力学与动态光影系统 (Celestial Diurnal Orbit Engine)
+       ========================================================================== */
+
+    /* 写实太阳：只沿顶部栏的浅弧轨迹运行，不覆盖主体内容。 */
+    .celestial-sun {
+      position: fixed;
+      left: var(--sun-x);
+      top: var(--sun-y);
+      transform: translate(-50%, -50%);
+      width: 76px;
+      height: 76px;
+      z-index: 0;
+      pointer-events: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: left 1s linear, top 1s linear, opacity 0.8s ease;
+      will-change: left, top;
+    }
+
+    .sun-core {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 28% 30%, rgba(255,255,255,.96) 0 4%, transparent 5%),
+        radial-gradient(circle at 63% 66%, rgba(180,83,9,.34) 0 5%, transparent 7%),
+        radial-gradient(circle at 42% 48%, #fffbd5 0%, #ffd45e 35%, #f59e0b 72%, #b45309 100%);
+      box-shadow:
+        0 0 10px 2px rgba(255, 250, 205, .96),
+        0 0 34px 12px rgba(251, 191, 36, .46),
+        0 0 82px 28px rgba(245, 158, 11, .16);
+      border: 1px solid rgba(255, 244, 180, .9);
+      position: relative;
+    }
+
+    .sun-core::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: repeating-radial-gradient(circle at 46% 42%, transparent 0 3px, rgba(180,83,9,.08) 4px, transparent 5px);
+      mix-blend-mode: multiply;
+    }
+
+    .sun-corona {
+      position: absolute;
+      inset: 1px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 229, 120, .3);
+      box-shadow: 0 0 18px 5px rgba(251,191,36,.2);
+      animation: breatheSun 5s ease-in-out infinite;
+    }
+
+    /* 写实月面：多层径向渐变形成陨石坑，遮罩近似当前月相。 */
+    .celestial-moon {
+      position: fixed;
+      left: var(--moon-x);
+      top: var(--moon-y);
+      transform: translate(-50%, -50%);
+      width: 76px;
+      height: 76px;
+      z-index: 0;
+      pointer-events: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: left 1s linear, top 1s linear, opacity 0.8s ease;
+      will-change: left, top;
+    }
+
+    .moon-body {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 28%, rgba(71,85,105,.7) 0 5%, transparent 6%),
+        radial-gradient(circle at 68% 62%, rgba(71,85,105,.56) 0 7%, transparent 8%),
+        radial-gradient(circle at 48% 76%, rgba(100,116,139,.4) 0 4%, transparent 5%),
+        radial-gradient(circle at 36% 38%, #f8fafc 0%, #cbd5e1 55%, #64748b 100%);
+      border: 1px solid rgba(255, 255, 255, .72);
+      box-shadow:
+        0 0 9px 1px rgba(226,232,240,.74),
+        0 0 32px 12px rgba(148,163,184,.22),
+        inset -5px -4px 7px rgba(15,23,42,.42);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .moon-crescent {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(2, 6, 23, .92);
+      transform: translateX(var(--moon-shadow-shift, -42px));
+      transition: transform 1s linear;
+    }
+
+    .moon-halo {
+      position: absolute;
+      inset: 1px;
+      border-radius: 50%;
+      border: 1px solid rgba(226,232,240,.18);
+      box-shadow: 0 0 22px 8px rgba(148,163,184,.12);
+    }
+
+    @keyframes breatheSun { 0%, 100% { transform: scale(.98); opacity: .72; } 50% { transform: scale(1.05); opacity: 1; } }
+
+    /* 全局光影随天体坐标动态投射移动 */
+    .celestial-beam-glow {
+      position: fixed;
+      left: var(--active-celestial-x);
+      top: var(--active-celestial-y);
+      transform: translate(-50%, -50%);
+      width: 360px;
+      height: 190px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(12px);
+      transition: left 1s linear, top 1s linear, background 1s ease, opacity .8s ease;
+      will-change: left, top;
+    }
+
+    body.theme-day .celestial-beam-glow {
+      background: radial-gradient(ellipse, rgba(255, 210, 96, .2) 0%, rgba(245, 158, 11, .07) 32%, transparent 68%);
+    }
+
+    body:not(.theme-day) .celestial-beam-glow {
+      background: radial-gradient(ellipse, rgba(203, 213, 225, .13) 0%, rgba(100, 116, 139, .04) 34%, transparent 68%);
+    }
+
+    /* 动态光影随之映射的微晶玻璃卡片 */
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-border-light);
+      border-left: 1px solid var(--glass-border-left);
+      box-shadow: var(--shadow-dir-x) var(--shadow-dir-y) 40px rgba(0, 0, 0, 0.7), var(--glass-inset-glow);
+      border-radius: var(--radius-xl);
+      transition: background 0.3s, border-color 0.3s, transform 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glass-panel:hover {
+      border-color: var(--glass-border-light);
+      transform: translateY(-2px);
+    }
+
+    /* 浮空立柱侧边导航栏 */
+    .sidebar {
+      width: 275px;
+      margin: 16px 0 16px 16px;
+      background: var(--sidebar-glass);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-border-light);
+      border-radius: var(--radius-xl);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 50;
+      box-shadow: var(--glass-shadow), var(--glass-inset-glow);
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 22px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--table-border);
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px var(--accent-cyan-glow);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
+    }
+
+    .brand-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: #fff;
+      stroke-width: 2.2;
+      fill: none;
+    }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-menu {
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-dim);
+      padding: 10px 14px 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 16px;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nav-item:hover {
+      background: var(--card-sub-bg);
+      color: var(--text-main);
+      transform: translateX(3px);
+    }
+
+    .nav-item.active {
+      background: var(--glass-bg-hover);
+      color: var(--text-main);
+      border: 1px solid var(--glass-border);
+      border-left: 3px solid var(--accent-cyan);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      font-weight: 600;
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2.2;
+      stroke: currentColor;
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--table-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* 主界面区域 */
+    .main-wrapper {
+      margin-left: 295px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      position: relative;
+      z-index: 1;
+      padding-right: 18px;
+    }
+
+    /* 悬浮岛式顶部栏 */
+    .topbar-container {
+      padding: 16px 0 0 0;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .topbar {
+      height: 66px;
+      background: var(--topbar-glass);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-border-light);
+      border-radius: var(--radius-xl);
+      padding: 0 24px 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--glass-shadow), var(--glass-inset-glow);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .edge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-emerald);
+    }
+
+    .edge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulseGlow 2s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.8); }
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 动态天体时钟指示胶囊 */
+    .celestial-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: default;
+      transition: all 0.2s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .celestial-sun, .celestial-moon, .celestial-beam-glow, .moon-crescent { transition: none; }
+      .sun-corona { animation: none; }
+    }
+
+    .clock-pill {
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--accent-cyan);
+      padding: 6px 12px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.05em;
+    }
+
+    /* 按钮质感 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-glass {
+      background: var(--glass-bg);
+      color: var(--text-main);
+      border: 1px solid var(--glass-border);
+      border-top-color: var(--glass-border-light);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-glass:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-light);
+      transform: translateY(-1px);
+    }
+
+    .btn-glow-blue {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 18px var(--accent-cyan-glow);
+    }
+
+    .btn-glow-blue:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger-glass {
+      background: rgba(244, 63, 94, 0.12);
+      color: var(--accent-rose);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .btn-danger-glass:hover {
+      background: rgba(244, 63, 94, 0.25);
+      color: #fff;
+    }
+
+    /* 容器 */
+    .content-container {
+      padding: 24px 8px 60px 8px;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .view-panel {
+      display: none;
+      animation: viewFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .view-panel.active {
+      display: block;
+    }
+
+    @keyframes viewFadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 仪表盘头部 Banner */
+    .dash-banner {
+      padding: 22px 28px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .banner-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .banner-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* 6 列微晶 KPI 指标网格 */
+    .kpi-grid-6 {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card-glass {
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 148px;
+    }
+
+    .kpi-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .kpi-orb-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-sub-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .kpi-orb-badge svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2.2;
+    }
+
+    .kpi-num {
+      font-size: 28px;
+      font-weight: 800;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: -0.04em;
+      color: var(--text-main);
+      margin: 12px 0 8px;
+    }
+
+    .kpi-footer {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-glass {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-emerald {
+      background: rgba(52, 211, 153, 0.12);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+    .badge-blue {
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .badge-amber {
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--accent-amber);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .badge-rose {
+      background: rgba(244, 63, 94, 0.12);
+      color: var(--accent-rose);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    /* 仪表盘第二行：主力雷达 (48%) + 流量波形 (52%) */
+    .dash-mid-split {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 22px;
+      margin-bottom: 24px;
+    }
+
+    .card-title-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .card-heading {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-heading svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--accent-cyan);
+    }
+
+    /* 主账号透视卡 */
+    .hero-account-glass {
+      padding: 20px;
+      background: var(--card-sub-bg);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-border-light);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .account-avatar-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .account-avatar-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      box-shadow: 0 0 20px var(--accent-cyan-glow);
+    }
+
+    .account-details-block {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .account-main-email {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .account-sub-tags {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .radar-token-ring-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 6px 14px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      flex-shrink: 0;
+    }
+
+    .countdown-digital {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+
+    /* 指标三连卡 */
+    .radar-stats-trio {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-mini-pill {
+      background: var(--card-sub-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 14px 10px;
+      text-align: center;
+    }
+
+    .stat-mini-pill .lbl {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .stat-mini-pill .val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-top: 4px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+
+    /* 原生 SVG 流量波形图 */
+    .chart-container-glass {
+      height: 160px;
+      width: 100%;
+      position: relative;
+      margin-top: 10px;
+    }
+
+    .chart-container-glass svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* 纯晶体斑马纹表格 */
+    .glass-table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--glass-border);
+      background: var(--card-sub-bg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      background: var(--card-sub-bg);
+      padding: 14px 18px;
+      font-weight: 700;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--table-border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--table-border);
+      color: var(--text-secondary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: var(--glass-bg-hover);
+    }
+
+    .mono-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    /* 模态框完全透明玻璃质感 */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--modal-mask);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-glass-card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-border-light);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
+      animation: viewFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 22px 26px;
+      border-bottom: 1px solid var(--table-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 24px 26px;
+    }
+
+    .modal-footer {
+      padding: 18px 26px;
+      border-top: 1px solid var(--table-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--card-sub-bg);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .form-input-glass {
+      width: 100%;
+      height: 42px;
+      background: var(--input-bg);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-border-light);
+      border-radius: var(--radius-md);
+      padding: 0 14px;
+      font-size: 13px;
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-input-glass:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 3px var(--accent-cyan-glow);
+    }
+
+    /* Toast 浮层 */
+    .toast-stack {
+      position: fixed;
+      bottom: 24px;
+      right: 28px;
+      z-index: 10020;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast-glass {
+      padding: 12px 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast-success {
+      border-color: rgba(52, 211, 153, 0.4);
+      color: var(--accent-emerald);
+    }
+    .toast-error {
+      border-color: rgba(244, 63, 94, 0.4);
+      color: var(--accent-rose);
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       动态漫游天体：太阳东升西落、月亮东升西落，随时间定义日出日落，光影随之流转
+       ========================================================================== -->
+  <!-- 动态太阳 (东升西落) -->
+  <div class="celestial-sun" id="celestialSun" aria-hidden="true">
+    <div class="sun-core"></div>
+    <div class="sun-corona"></div>
+  </div>
+
+  <!-- 动态月亮 (东升西落) -->
+  <div class="celestial-moon" id="celestialMoon" aria-hidden="true">
+    <div class="moon-body">
+      <div class="moon-crescent"></div>
+    </div>
+    <div class="moon-halo"></div>
+  </div>
+
+  <!-- 随天体坐标动态移动的聚光漫射光晕 -->
+  <div class="celestial-beam-glow" id="celestialBeamGlow" aria-hidden="true"></div>
+
+  <!-- 浮空立柱侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>M365 Gateway</h1>
+        <p>CLOUDFLARE EDGE</p>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="nav-title">系统核心监控</div>
+      <a class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>全景仪表盘</span>
+      </a>
+      <a class="nav-item" data-view="accounts">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>微软账号池</span>
+      </a>
+      <a class="nav-item" data-view="keys">
+        <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-1.5 1.5L14 9l-3 3-2-2-5 5a2.12 2.12 0 0 0 3 3l5-5-2-2 3.5-3.5"></path></svg>
+        <span>API 密钥管理</span>
+      </a>
+
+      <div class="nav-title" style="margin-top:12px">链路能力与诊断</div>
+      <a class="nav-item" data-view="models">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        <span>模型与能力矩阵</span>
+      </a>
+      <a class="nav-item" data-view="diagnostics">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span>诊断记录</span>
+      </a>
+      <a class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>系统架构与设置</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span id="topWorkerVersion">ver: edge-2.2</span>
+      <button class="btn btn-glass btn-sm" id="btnSidebarLogout">登出</button>
+    </div>
+  </aside>
+
+  <!-- 主工作区 -->
+  <div class="main-wrapper">
+    <!-- 悬浮岛式顶部栏 -->
+    <div class="topbar-container">
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="page-title" id="pageMainHeading">监控全景仪表盘</span>
+          <div class="edge-pill">
+            <span class="edge-dot"></span>
+            <span>DURABLE OBJECTS 集群</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- 只读的本地真实时间天体状态 -->
+          <div class="celestial-status-pill" id="celestialStatus" title="按设备本地真实时间运行；日出/日落边界为 06:00/18:00">
+            <span id="celestialStatusIcon">☀️</span>
+            <span id="celestialStatusText">正在同步本地时间...</span>
+          </div>
+
+          <div class="clock-pill" id="liveClockDisplay">--:--:-- UTC</div>
+          <button class="btn btn-glass btn-sm" id="btnRefreshData">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>同步状态</span>
+          </button>
+          <button class="btn btn-glow-blue btn-sm" id="btnQuickAddAccount">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>添加微软账号</span>
+          </button>
+        </div>
+      </header>
+    </div>
+
+    <!-- 内容卡片流 -->
+    <main class="content-container">
+
+      <!-- 1. 全景仪表盘视图 -->
+      <section id="view-dashboard" class="view-panel active">
+        <!-- 头部通知卡片 -->
+        <div class="glass-panel dash-banner">
+          <div>
+            <div class="banner-title">
+              <span>Cloudflare Edge 原生智能网关运行就绪</span>
+              <span class="badge-glass badge-blue" id="envBadgeTag">PROD 生产环境</span>
+            </div>
+            <p class="banner-desc">
+              采用 Durable Objects SQLite 保存权威状态，支持微软多账号有序调度、Token 智能续期与协议适配转换。
+            </p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-glass btn-sm" onclick="switchView('accounts')">查看全部账号池 &rarr;</button>
+          </div>
+        </div>
+
+        <!-- 6 列全景 KPI 核心指标网格 -->
+        <div class="kpi-grid-6">
+          <!-- KPI 1: 请求总吞吐 -->
+          <div class="glass-panel kpi-card-glass">
+            <div class="kpi-header">
+              <span>累计请求处理</span>
+              <div class="kpi-orb-badge" style="color:var(--accent-cyan)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+              </div>
+            </div>
+            <div class="kpi-num" id="kpiReqTotal">0</div>
+            <div class="kpi-footer">
+              <span class="badge-glass badge-emerald" id="kpiSuccessRatio">100% 成功</span>
+              <span style="font-size:11px;color:var(--text-dim)">(异常: <span id="kpiErrTotal">0</span>)</span>
+            </div>
+          </div>
+
+          <!-- KPI 2: Token 消耗 -->
+          <div class="glass-panel kpi-card-glass">
+            <div class="kpi-header">
+              <span>Token 吞吐计量</span>
+              <div class="kpi-orb-badge" style="color:var(--accent-indigo)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              </div>
+            </div>
+            <div class="kpi-num" id="kpiTokenTotal">0</div>
+            <div class="kpi-footer">
+              <span style="font-size:11px;color:var(--text-dim)">入: <b id="kpiTokensInVal" style="color:var(--text-main)">0</b> &bull; 出: <b id="kpiTokensOutVal" style="color:var(--text-main)">0</b></span>
+            </div>
+          </div>
+
+          <!-- KPI 3: 账号池就绪 -->
+          <div class="glass-panel kpi-card-glass">
+            <div class="kpi-header">
+              <span>微软账号池容量</span>
+              <div class="kpi-orb-badge" style="color:var(--accent-emerald)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              </div>
+            </div>
+            <div class="kpi-num" id="kpiPoolCapacity">0 / 40</div>
+            <div class="kpi-footer">
+              <span id="kpiPoolStates" style="font-size:11px;color:var(--text-dim)">在线: 0 &bull; 冷却: 0</span>
+            </div>
+          </div>
+
+          <!-- KPI 4: 边缘调度模式 -->
+          <div class="glass-panel kpi-card-glass">
+            <div class="kpi-header">
+              <span>状态权威架构</span>
+              <div class="kpi-orb-badge" style="color:var(--accent-amber)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+              </div>
+            </div>
+            <div class="kpi-num" style="font-size:22px">DO SQLite</div>
+            <div class="kpi-footer">
+              <span class="badge-glass badge-emerald">强一致性存储</span>
+            </div>
+          </div>
+
+          <!-- KPI 5: 加密保护等级 -->
+          <div class="glass-panel kpi-card-glass">
+            <div class="kpi-header">
+              <span>凭据密封安全</span>
+              <div class="kpi-orb-badge" style="color:var(--accent-cyan)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              </div>
+            </div>
+            <div class="kpi-num" style="font-size:22px">AES-256-GCM</div>
+            <div class="kpi-footer">
+              <span class="badge-glass badge-blue">强一致密文 + 加密 KV 镜像</span>
+            </div>
+          </div>
+
+          <!-- KPI 6: 活跃脉冲 -->
+          <div class="glass-panel kpi-card-glass">
+            <div class="kpi-header">
+              <span>最近上游活跃</span>
+              <div class="kpi-orb-badge" style="color:var(--accent-rose)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              </div>
+            </div>
+            <div class="kpi-num" style="font-size:20px" id="kpiLastActiveTime">无调用记录</div>
+            <div class="kpi-footer">
+              <span style="font-size:11px;color:var(--text-dim)">来自持久化请求统计</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 第二行：主力上游雷达透视 + 原生流量波形走势 -->
+        <div class="dash-mid-split">
+          <!-- 主账号透视卡 -->
+          <div class="glass-panel" style="padding:24px">
+            <div class="card-title-bar">
+              <div class="card-heading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                <span>当前承载主账号透视</span>
+              </div>
+              <span class="badge-glass badge-emerald">ROUTING PRIMARY</span>
+            </div>
+
+            <!-- 账号详情模块 -->
+            <div class="hero-account-glass">
+              <div class="account-avatar-wrapper">
+                <div class="account-avatar-circle" id="heroAccAvatar">M</div>
+              </div>
+              <div class="account-details-block">
+                <div class="account-main-email" id="heroAccEmail">载入账号池状态中...</div>
+                <div class="account-sub-tags">
+                  <span id="heroAccName">Microsoft Copilot User</span>
+                  <span>&bull;</span>
+                  <span>出口: <b id="heroAccEgress" style="color:var(--accent-cyan)">direct</b></span>
+                  <span>&bull;</span>
+                  <span>状态: <b id="heroAccHealth" style="color:var(--accent-emerald)">healthy</b></span>
+                </div>
+              </div>
+              <!-- 倒计时环形钟 -->
+              <div class="radar-token-ring-box">
+                <svg width="34" height="34" viewBox="0 0 36 36">
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--table-border)" stroke-width="3.5" />
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-cyan)" stroke-dasharray="75, 100" stroke-width="3.5" stroke-linecap="round" />
+                </svg>
+                <div>
+                  <div style="font-size:10px;color:var(--text-dim)">Token 剩余</div>
+                  <div class="countdown-digital" id="radarTokenClock">--:--</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 指标三连卡 -->
+            <div class="radar-stats-trio">
+              <div class="stat-mini-pill">
+                <div class="lbl">主账号承载请求</div>
+                <div class="val" id="radarReqCount">0</div>
+              </div>
+              <div class="stat-mini-pill">
+                <div class="lbl">异常拦截</div>
+                <div class="val" id="radarErrCount" style="color:var(--accent-rose)">0</div>
+              </div>
+              <div class="stat-mini-pill">
+                <div class="lbl">自动续期时刻</div>
+                <div class="val" id="radarNextRefresh" style="font-size:15px;color:var(--accent-cyan)">--:--</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 原生 SVG 流量波形图 -->
+          <div class="glass-panel" style="padding:24px">
+            <div class="card-title-bar">
+              <div class="card-heading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <span>网关吞吐轨迹示意 (Traffic Pulse)</span>
+              </div>
+              <span class="badge-glass badge-blue">STATIC PREVIEW</span>
+            </div>
+            
+            <div class="chart-container-glass">
+              <svg viewBox="0 0 600 160" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#0284c7" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="40" x2="600" y2="40" stroke="var(--table-border)" stroke-dasharray="4 4" />
+                <line x1="0" y1="80" x2="600" y2="80" stroke="var(--table-border)" stroke-dasharray="4 4" />
+                <line x1="0" y1="120" x2="600" y2="120" stroke="var(--table-border)" stroke-dasharray="4 4" />
+                
+                <path d="M 0 130 C 50 120, 100 80, 150 95 C 200 110, 250 50, 300 65 C 350 80, 400 30, 450 45 C 500 60, 550 20, 600 35 L 600 160 L 0 160 Z" fill="url(#waveGrad)" />
+                <path d="M 0 130 C 50 120, 100 80, 150 95 C 200 110, 250 50, 300 65 C 350 80, 400 30, 450 45 C 500 60, 550 20, 600 35" fill="none" stroke="var(--accent-cyan)" stroke-width="2.8" stroke-linecap="round" />
+                
+                <circle cx="450" cy="45" r="4.5" fill="var(--accent-cyan)" stroke="var(--bg-color)" stroke-width="2" />
+                <circle cx="600" cy="35" r="5" fill="var(--accent-emerald)" stroke="var(--bg-color)" stroke-width="2" />
+              </svg>
+            </div>
+            
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-dim);margin-top:10px">
+              <span>&bull; 图形仅作界面示意，并非实时或历史监控数据</span>
+              <span>实际状态请以上方持久化累计指标为准</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 第三行：快捷状态面板 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+          <div class="glass-panel" style="padding:24px">
+            <div class="card-title-bar">
+              <div class="card-heading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>
+                <span>主力后端模型与能力速查</span>
+              </div>
+              <button class="btn btn-glass btn-sm" onclick="switchView('models')">查看全部 &rarr;</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card-sub-bg);border:1px solid var(--table-border);border-radius:var(--radius-md)">
+                <div>
+                  <strong style="font-size:13px;color:var(--text-main)">gpt-5.6-sol</strong>
+                  <span style="font-size:11px;color:var(--text-dim);margin-left:8px">224K Context &bull; Text &bull; Tools</span>
+                </div>
+                <span class="badge-glass badge-emerald">已就绪</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card-sub-bg);border:1px solid var(--table-border);border-radius:var(--radius-md)">
+                <div>
+                  <strong style="font-size:13px;color:var(--text-main)">claude-sonnet</strong>
+                  <span style="font-size:11px;color:var(--text-dim);margin-left:8px">200K Context &bull; Text &bull; Stream</span>
+                </div>
+                <span class="badge-glass badge-emerald">已就绪</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card-sub-bg);border:1px solid var(--table-border);border-radius:var(--radius-md)">
+                <div>
+                  <strong style="font-size:13px;color:var(--text-main)">gpt-6-astra</strong>
+                  <span style="font-size:11px;color:var(--text-dim);margin-left:8px">224K Context &bull; 租户相关可用性</span>
+                </div>
+                <span class="badge-glass badge-blue">推理优化</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-panel" style="padding:24px">
+            <div class="card-title-bar">
+              <div class="card-heading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span>最新请求诊断记录</span>
+              </div>
+              <button class="btn btn-glass btn-sm" onclick="switchView('diagnostics')">全部日志 &rarr;</button>
+            </div>
+            <div id="dashRecentLogsBox" style="display:flex;flex-direction:column;gap:10px">
+              <div style="font-size:12px;color:var(--text-dim);text-align:center;padding:20px">正在载入诊断记录...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 微软账号池视图 -->
+      <section id="view-accounts" class="view-panel">
+        <div class="glass-panel" style="padding:26px">
+          <div class="card-title-bar">
+            <div>
+              <h2 class="card-heading">微软账号池集群管理</h2>
+              <p style="font-size:12px;color:var(--text-dim);margin-top:4px">
+                网关支持智能轮换。当上游遭遇 429 限流时，自动触发指数退避并在多账号间平滑切换。
+              </p>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-glow-blue btn-sm" id="btnAddAccountFromPoolView">添加微软账号 (OAuth)</button>
+            </div>
+          </div>
+
+          <div class="glass-table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>调度角色</th>
+                  <th>微软账号 (Email)</th>
+                  <th>显示名称</th>
+                  <th>出口链路</th>
+                  <th>Token 凭据状态</th>
+                  <th>请求 / 错误</th>
+                  <th>Token 吞吐量</th>
+                  <th>快捷操作</th>
+                </tr>
+              </thead>
+              <tbody id="accountsListTbody">
+                <tr><td colspan="8" style="text-align:center;color:var(--text-dim)">载入账号数据中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. API 密钥管理视图 -->
+      <section id="view-keys" class="view-panel">
+        <div class="glass-panel" style="padding:26px">
+          <div class="card-title-bar">
+            <div>
+              <h2 class="card-heading">客户端 API Key 全生命周期管理</h2>
+              <p style="font-size:12px;color:var(--text-dim);margin-top:4px">
+                外部应用调用 <code>/v1/chat/completions</code> 必须携带创建后仅展示一次的 <code>Authorization: Bearer m365_...</code>。
+              </p>
+            </div>
+            <button class="btn btn-glow-blue btn-sm" id="btnCreateKeyModal">创建新 API Key</button>
+          </div>
+
+          <div class="glass-table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>状态</th>
+                  <th>密钥名称</th>
+                  <th>脱敏前缀</th>
+                  <th>有效期限</th>
+                  <th>创建时刻</th>
+                  <th>最近使用</th>
+                  <th>管理操作</th>
+                </tr>
+              </thead>
+              <tbody id="keysListTbody">
+                <tr><td colspan="7" style="text-align:center;color:var(--text-dim)">载入密钥列表中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 模型与能力视图 -->
+      <section id="view-models" class="view-panel">
+        <div class="glass-panel" style="padding:26px">
+          <div class="card-title-bar" style="margin-bottom:14px">
+            <div>
+              <h2 class="card-heading">Worker 实际模型目录</h2>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:6px">与 <span class="mono-tag">GET /v1/models</span> 一致：7 个正式模型 ID，另支持 6 个请求别名。</div>
+            </div>
+            <span class="badge-glass badge-blue">13 个可接受 ID</span>
+          </div>
+          <div class="glass-table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>模型 ID</th>
+                  <th>开发者 / 架构</th>
+                  <th>上下文窗口</th>
+                  <th>视觉能力 (Vision)</th>
+                  <th>函数调用 (Tools)</th>
+                  <th>流式传输 (SSE)</th>
+                  <th>协议转换支持</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong style="color:var(--text-main)">gpt-5.6-sol</strong></td>
+                  <td>Microsoft 365</td>
+                  <td><span class="mono-tag">224K / 输入 96K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>OpenAI Chat Completions / Responses</td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--text-main)">gpt-5.6-reasoning</strong></td>
+                  <td>Microsoft 365</td>
+                  <td><span class="mono-tag">224K / 输入 96K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>推理路由；公开摘要按上游实际返回</td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--text-main)">gpt-6-astra</strong></td>
+                  <td>Microsoft 365</td>
+                  <td><span class="mono-tag">224K / 输入 96K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>租户相关可用性</td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--text-main)">gpt-5.5</strong></td>
+                  <td>Microsoft 365</td>
+                  <td><span class="mono-tag">224K / 输入 96K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>标准与推理模式</td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--text-main)">gpt-5.5-reasoning</strong></td>
+                  <td>Microsoft 365</td>
+                  <td><span class="mono-tag">224K / 输入 96K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>固定推理路由</td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--text-main)">claude-sonnet</strong></td>
+                  <td>Anthropic via Microsoft 365</td>
+                  <td><span class="mono-tag">200K / 输入 136K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>OpenAI 与 Anthropic Messages 兼容端点</td>
+                </tr>
+                <tr>
+                  <td><strong style="color:var(--text-main)">claude-sonnet-reasoning</strong></td>
+                  <td>Anthropic via Microsoft 365</td>
+                  <td><span class="mono-tag">200K / 输入 136K</span></td>
+                  <td><span class="badge-glass badge-amber">未开放</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td><span class="badge-glass badge-emerald">支持</span></td>
+                  <td>固定推理路由；兼容 OpenAI 与 Anthropic Messages</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top:18px;padding:16px;background:var(--card-sub-bg);border:1px solid var(--table-border);border-radius:var(--radius-md)">
+            <div style="font-size:12px;font-weight:700;color:var(--text-main);margin-bottom:10px">兼容请求别名（不会在标准 /v1/models 中重复返回）</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text-dim)">
+              <span class="mono-tag">gpt-5.6 → gpt-5.6-sol</span>
+              <span class="mono-tag">m365-copilot → gpt-5.6-sol</span>
+              <span class="mono-tag">gpt-5.5-think-deeper → gpt-5.5-reasoning</span>
+              <span class="mono-tag">gpt-5.6-think-deeper → gpt-5.6-reasoning</span>
+              <span class="mono-tag">claude → claude-sonnet</span>
+              <span class="mono-tag">claude-sonnet-5 → claude-sonnet</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. 请求诊断视图 -->
+      <section id="view-diagnostics" class="view-panel">
+        <div class="glass-panel" style="padding:26px">
+          <div class="card-title-bar">
+            <div>
+              <h2 class="card-heading">系统请求诊断记录</h2>
+              <p style="font-size:12px;color:var(--text-dim);margin-top:4px">
+                最多保留 200 条有界、脱敏的请求终态快照；本页不是实时日志，请手动刷新。
+              </p>
+            </div>
+            <button class="btn btn-glass btn-sm" id="btnRefreshLogs">刷新日志流</button>
+          </div>
+
+          <div class="glass-table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间戳 (UTC)</th>
+                  <th>等级</th>
+                  <th>HTTP 方法</th>
+                  <th>路径 / 状态</th>
+                  <th>诊断码 / 耗时</th>
+                </tr>
+              </thead>
+              <tbody id="fullLogsTbody">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-dim)">载入日志中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. 系统设置视图 -->
+      <section id="view-settings" class="view-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <div class="glass-panel" style="padding:26px">
+            <h3 class="card-heading" style="margin-bottom:20px">Cloudflare 原生架构属性</h3>
+            <div style="display:flex;flex-direction:column;gap:14px;font-size:13px">
+              <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--table-border)">
+                <span style="color:var(--text-dim)">计算架构</span>
+                <strong>Cloudflare Worker + Durable Objects</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--table-border)">
+                <span style="color:var(--text-dim)">元数据权威存储</span>
+                <span class="mono-tag">DO SQLite (零外部网络开销)</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--table-border)">
+                <span style="color:var(--text-dim)">凭据密封加密</span>
+                <span class="mono-tag" id="txtCredentialStorage">Durable Object 强一致密文权威副本 + AES-GCM KV 镜像</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--table-border)">
+                <span style="color:var(--text-dim)">账号容量配额</span>
+                <span id="txtMaxAccounts">40</span>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--text-dim)">管理鉴权保持</span>
+                <span>24 小时 (HttpOnly Cookie)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-panel" style="padding:26px">
+            <h3 class="card-heading" style="margin-bottom:20px">运维敏感操作</h3>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div>
+                <h4 style="font-size:14px;font-weight:600;margin-bottom:6px">更新管理员口令</h4>
+                <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">
+                  修改后台登录凭据。更新后需使用新口令重新鉴权。
+                </p>
+                <button class="btn btn-glass btn-sm" onclick="openModal('modalChangePassword')">修改管理员密码</button>
+              </div>
+              <hr style="border:0;border-top:1px solid var(--table-border)" />
+              <div>
+                <h4 style="font-size:14px;font-weight:600;margin-bottom:6px">重置全局统计指标</h4>
+                <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">
+                  将累计请求数、异常拦截数及 Token 消耗计数归零（不会清除账号或密钥配置）。
+                </p>
+                <button class="btn btn-danger-glass btn-sm" id="btnResetMetrics">立即清空统计计数</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 模态框：OAuth PKCE 微软登录向导 -->
+  <div class="modal-backdrop" id="modalOAuthWizard">
+    <div class="modal-glass-card" role="dialog" aria-modal="true" aria-labelledby="oauthModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="oauthModalTitle">接入微软账号 (OAuth PKCE 向导)</h3>
+        <button class="btn btn-glass btn-sm" type="button" aria-label="关闭 OAuth 向导" onclick="closeModal('modalOAuthWizard')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;gap:14px">
+            <span class="badge-glass badge-blue" style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold">1</span>
+            <div>
+              <strong style="font-size:14px">初始化授权请求</strong>
+              <p style="font-size:12px;color:var(--text-dim);margin:6px 0 10px">
+                点击下方按钮，系统将生成符合 S256 Code Challenge 标准的链接并在新窗口中打开微软授权页面：
+              </p>
+              <button class="btn btn-glow-blue btn-sm" id="btnStartOAuthFlow">在新窗口打开微软登录授权页 &rarr;</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:14px">
+            <span class="badge-glass badge-blue" style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold">2</span>
+            <div>
+              <strong style="font-size:14px">登录并复制重定向 URL</strong>
+              <p style="font-size:12px;color:var(--text-dim);margin-top:6px">
+                在微软页面登录有权限的 Copilot 账号。授权后请完整复制包含 <code>code=...</code> 与 <code>state=...</code> 的地址；不支持不带字段名的裸授权码。
+              </p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:14px">
+            <span class="badge-glass badge-blue" style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold">3</span>
+            <div style="flex:1">
+              <strong style="font-size:14px">粘贴回调并自动换取 Token</strong>
+              <input type="text" id="iptOAuthCallbackUrl" class="form-input-glass" placeholder="粘贴 https://login.microsoftonline.com/... 链接" style="margin-top:8px" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-glass" onclick="closeModal('modalOAuthWizard')">取消</button>
+        <button class="btn btn-glow-blue" id="btnFinishOAuth">确认解析并激活</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：创建 API 密钥 -->
+  <div class="modal-backdrop" id="modalCreateNewKey">
+    <div class="modal-glass-card" role="dialog" aria-modal="true" aria-labelledby="keyModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="keyModalTitle">生成新 API 密钥</h3>
+        <button class="btn btn-glass btn-sm" type="button" aria-label="关闭 API Key 创建窗口" onclick="closeModal('modalCreateNewKey')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">密钥别名 (用于区分客户端)</label>
+          <input type="text" id="iptNewKeyAlias" class="form-input-glass" placeholder="例如: codex-dev 或 production-agent" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">有效期限</label>
+          <select id="selNewKeyDays" class="form-input-glass">
+            <option value="0">永久不过期 (0 天)</option>
+            <option value="30">30 天</option>
+            <option value="90" selected>90 天 (推荐生产周期)</option>
+            <option value="180">180 天</option>
+            <option value="365">365 天</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-glass" onclick="closeModal('modalCreateNewKey')">取消</button>
+        <button class="btn btn-glow-blue" id="btnDoCreateKey">确认生成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：一次性展示新密钥 -->
+  <div class="modal-backdrop" id="modalKeyExposed">
+    <div class="modal-glass-card" role="dialog" aria-modal="true" aria-labelledby="keyExposedTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="keyExposedTitle" style="color:var(--accent-emerald)">API 密钥创建成功</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+          这是该密钥<strong>唯一一次完整展示</strong>。系统仅在数据库中保存其 SHA-256 哈希，关闭窗口后无法再次找回，请妥善保存。
+        </p>
+        <div style="background:var(--card-sub-bg);border:1px dashed var(--accent-cyan);border-radius:var(--radius-md);padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span class="mono-tag" id="txtRevealedKey" style="font-size:13px;word-break:break-all"></span>
+          <button class="btn btn-glow-blue btn-sm" id="btnCopyRawKey" style="flex-shrink:0">复制</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-glow-blue" onclick="closeModal('modalKeyExposed')">我已保存妥当</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：修改密码 -->
+  <div class="modal-backdrop" id="modalChangePassword">
+    <div class="modal-glass-card" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="passwordModalTitle">更新管理员口令</h3>
+        <button class="btn btn-glass btn-sm" type="button" aria-label="关闭修改密码窗口" onclick="closeModal('modalChangePassword')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">当前口令</label>
+          <input type="password" id="iptOldPwd" class="form-input-glass" placeholder="请输入现有密码" autocomplete="current-password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">新口令 (至少 8 位)</label>
+          <input type="password" id="iptNewPwd1" class="form-input-glass" placeholder="输入新密码" minlength="8" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认新口令</label>
+          <input type="password" id="iptNewPwd2" class="form-input-glass" placeholder="再次输入新密码" minlength="8" autocomplete="new-password" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-glass" onclick="closeModal('modalChangePassword')">取消</button>
+        <button class="btn btn-glow-blue" id="btnDoChangePwd">更新密码</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 消息栈 -->
+  <div class="toast-stack" id="toastBox" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      let accountsState = [];
+      let totalsState = null;
+      let settingsState = null;
+      let logsState = [];
+      let countdownInterval = null;
+
+      // ==========================================================================
+      // 天体昼夜动力学与动态光影引擎 (Sun & Moon Astronomical Orbit Engine)
+      // ==========================================================================
+      const sunEl = document.getElementById("celestialSun");
+      const moonEl = document.getElementById("celestialMoon");
+      const beamGlow = document.getElementById("celestialBeamGlow");
+      const statusIcon = document.getElementById("celestialStatusIcon");
+      const statusText = document.getElementById("celestialStatusText");
+
+      const SUNRISE_HOUR = 6;
+      const SUNSET_HOUR = 18;
+      const SYNODIC_MONTH_MS = 29.53058867 * 86400 * 1000;
+      const KNOWN_NEW_MOON_UTC = Date.UTC(2000, 0, 6, 18, 14);
+
+      function setApproximateLunarPhase(now) {
+        const rawPhase = ((now.getTime() - KNOWN_NEW_MOON_UTC) % SYNODIC_MONTH_MS + SYNODIC_MONTH_MS) % SYNODIC_MONTH_MS;
+        const phase = rawPhase / SYNODIC_MONTH_MS;
+        const shift = phase <= 0.5 ? -(phase / 0.5) * 42 : ((1 - phase) / 0.5) * 42;
+        document.documentElement.style.setProperty("--moon-shadow-shift", `${shift.toFixed(1)}px`);
+      }
+
+      function updateCelestialOrbit() {
+        const now = new Date();
+        const seconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        const hour = seconds / 3600;
+        const isDay = hour >= SUNRISE_HOUR && hour < SUNSET_HOUR;
+        const leftEdge = window.innerWidth >= 900 ? 370 : 42;
+        const rightEdge = Math.max(leftEdge + 120, window.innerWidth - 72);
+        let subT;
+
+        if (isDay) {
+          subT = (hour - SUNRISE_HOUR) / (SUNSET_HOUR - SUNRISE_HOUR);
+          document.body.classList.add("theme-day");
+          sunEl.style.opacity = "1";
+          moonEl.style.opacity = "0";
+          if (statusIcon) statusIcon.textContent = "☀️";
+        } else {
+          subT = hour >= SUNSET_HOUR ? (hour - SUNSET_HOUR) / 12 : (hour + 6) / 12;
+          document.body.classList.remove("theme-day");
+          moonEl.style.opacity = "1";
+          sunEl.style.opacity = "0";
+          if (statusIcon) statusIcon.textContent = "🌙";
+        }
+
+        const activeX = leftEdge + subT * (rightEdge - leftEdge);
+        const activeY = 72 - Math.sin(subT * Math.PI) * 42;
+        const activeElement = isDay ? sunEl : moonEl;
+        activeElement.style.left = `${activeX}px`;
+        activeElement.style.top = `${activeY}px`;
+        beamGlow.style.left = `${activeX}px`;
+        beamGlow.style.top = `${activeY}px`;
+        beamGlow.style.opacity = isDay ? ".9" : ".68";
+
+        const shadowX = (0.5 - subT) * 32;
+        const shadowY = 18 + Math.sin(subT * Math.PI) * 8;
+        document.documentElement.style.setProperty("--shadow-dir-x", `${shadowX.toFixed(1)}px`);
+        document.documentElement.style.setProperty("--shadow-dir-y", `${shadowY.toFixed(1)}px`);
+
+        const phaseDesc = isDay
+          ? subT < 0.2 ? "晨光" : subT > 0.8 ? "暮光" : "日照"
+          : subT < 0.2 ? "月升" : subT > 0.8 ? "月落" : "夜月";
+        const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+        if (statusText) statusText.textContent = `${timeStr} ${phaseDesc} · 本地真实时间`;
+        setApproximateLunarPhase(now);
+      }
+
+      updateCelestialOrbit();
+      setInterval(updateCelestialOrbit, 15000);
+      window.addEventListener("resize", updateCelestialOrbit, { passive: true });
+
+      // Toast 消息
+      function toast(msg, type = "info") {
+        const t = document.createElement("div");
+        t.className = `toast-glass toast-${type}`;
+        t.textContent = msg;
+        document.getElementById("toastBox").appendChild(t);
+        setTimeout(() => {
+          t.style.opacity = "0";
+          t.style.transform = "translateY(-12px)";
+          t.style.transition = "all 0.25s";
+          setTimeout(() => t.remove(), 250);
+        }, 2600);
+      }
+
+      window.openModal = (id) => document.getElementById(id)?.classList.add("open");
+      window.closeModal = (id) => {
+        document.getElementById(id)?.classList.remove("open");
+        if (id === "modalKeyExposed") document.getElementById("txtRevealedKey").textContent = "";
+      };
+
+      // 实时 UTC 时钟
+      setInterval(() => {
+        const now = new Date();
+        const str = now.toUTCString().split(" ")[4] + " UTC";
+        const clockEl = document.getElementById("liveClockDisplay");
+        if (clockEl) clockEl.textContent = str;
+      }, 1000);
+
+      // 视图切换
+      window.switchView = function (name) {
+        document.querySelectorAll(".nav-item").forEach((it) => {
+          it.classList.toggle("active", it.getAttribute("data-view") === name);
+        });
+        document.querySelectorAll(".view-panel").forEach((p) => p.classList.remove("active"));
+        document.getElementById(`view-${name}`)?.classList.add("active");
+
+        const titles = {
+          dashboard: "监控全景仪表盘",
+          accounts: "微软账号池调度",
+          keys: "API 密钥生命周期",
+          models: "模型与协议能力",
+          diagnostics: "请求诊断记录",
+          settings: "架构与安全设置",
+        };
+        document.getElementById("pageMainHeading").textContent = titles[name] || "运维中控台";
+
+        if (name === "keys") loadKeys();
+        if (name === "diagnostics") loadLogs();
+      };
+
+      document.querySelectorAll(".nav-item").forEach((it) => {
+        it.addEventListener("click", () => switchView(it.getAttribute("data-view")));
+      });
+
+      function numStr(n) {
+        return (n || 0).toLocaleString();
+      }
+
+      function tokenStr(n) {
+        if (!n) return "0";
+        if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + " M";
+        if (n >= 1_000) return (n / 1_000).toFixed(1) + " K";
+        return String(n);
+      }
+
+      function relTime(ts) {
+        if (!ts) return "无最近调用";
+        const diff = Date.now() - new Date(ts).getTime();
+        if (diff < 60_000) return `${Math.max(1, Math.floor(diff / 1000))} 秒前`;
+        if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+        if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
+        return `${Math.floor(diff / 86400_000)} 天前`;
+      }
+
+      function countdownStr(target) {
+        if (!target) return "--:--";
+        const rem = new Date(target).getTime() - Date.now();
+        if (rem <= 0) return "刷新就绪";
+        const m = Math.floor(rem / 60_000);
+        const s = Math.floor((rem % 60_000) / 1000);
+        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      }
+
+      function escapeHtml(s) {
+        if (!s) return "";
+        return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+      }
+
+      // 拉取健康与元数据
+      async function syncHealth() {
+        try {
+          const hRes = await fetch("/api/health");
+          if (hRes.ok) {
+            const h = await hRes.json();
+            document.getElementById("topWorkerVersion").textContent = `ver: ${(h.version || "edge").slice(0, 10)}`;
+          }
+          const sRes = await fetch("/api/admin/settings");
+          if (sRes.ok) {
+            const s = await sRes.json();
+            settingsState = s.settings || {};
+            document.getElementById("envBadgeTag").textContent = (settingsState.environment || "PROD").toUpperCase();
+            document.getElementById("txtMaxAccounts").textContent = settingsState.maxAccounts || "40";
+            document.getElementById("txtCredentialStorage").textContent = settingsState.credentialStorage
+              || "Durable Object 强一致密文权威副本 + AES-GCM KV 镜像";
+          }
+        } catch (e) {}
+      }
+
+      // 拉取账号与统计
+      async function syncAccounts() {
+        try {
+          const res = await fetch("/api/accounts");
+          if (!res.ok) {
+            if (res.status === 401) return window.location.replace("/login");
+            throw new Error("拉取数据失败");
+          }
+          const data = await res.json();
+          accountsState = data.accounts || [];
+          totalsState = {
+            totalRequestCount: data.totalRequestCount || 0,
+            totalErrorCount: data.totalErrorCount || 0,
+            totalTokenIn: data.totalTokenIn || 0,
+            totalTokenOut: data.totalTokenOut || 0,
+            lastRequestAt: data.lastRequestAt || null,
+          };
+          renderDashboard();
+          renderAccountsList();
+          return true;
+        } catch (e) {
+          toast(e.message, "error");
+          return false;
+        }
+      }
+
+      // 渲染仪表盘
+      function renderDashboard() {
+        if (!totalsState) return;
+
+        // KPI 1: 请求量 & 成功率
+        const req = totalsState.totalRequestCount || 0;
+        const err = totalsState.totalErrorCount || 0;
+        document.getElementById("kpiReqTotal").textContent = numStr(req);
+        document.getElementById("kpiErrTotal").textContent = numStr(err);
+        const succRate = req > 0 ? (((req - err) / req) * 100).toFixed(2) : "100.00";
+        document.getElementById("kpiSuccessRatio").textContent = `${succRate}% 成功`;
+
+        // KPI 2: Token 消耗
+        const tin = totalsState.totalTokenIn || 0;
+        const tout = totalsState.totalTokenOut || 0;
+        document.getElementById("kpiTokenTotal").textContent = tokenStr(tin + tout);
+        document.getElementById("kpiTokensInVal").textContent = tokenStr(tin);
+        document.getElementById("kpiTokensOutVal").textContent = tokenStr(tout);
+
+        // KPI 3: 账号池状态
+        const maxAcc = (settingsState && settingsState.maxAccounts) || 40;
+        document.getElementById("kpiPoolCapacity").textContent = `${accountsState.length} / ${maxAcc}`;
+        let healthyCount = 0, coolingCount = 0, isolatedCount = 0;
+        accountsState.forEach((a) => {
+          if (a.health === "healthy") healthyCount++;
+          else if (a.health === "cooldown") coolingCount++;
+          else if (a.health === "isolated") isolatedCount++;
+        });
+        document.getElementById("kpiPoolStates").textContent =
+          `在线: ${healthyCount} • 冷却: ${coolingCount} • 隔离: ${isolatedCount}`;
+
+        // KPI 6: 相对时间
+        document.getElementById("kpiLastActiveTime").textContent = relTime(totalsState.lastRequestAt);
+
+        // 主力雷达卡片
+        const activeAcc = accountsState.find((a) => a.active) || accountsState[0];
+        if (activeAcc) {
+          document.getElementById("heroAccEmail").textContent = activeAcc.email || "未知账户";
+          document.getElementById("heroAccName").textContent = activeAcc.displayName || "Microsoft User";
+          document.getElementById("heroAccAvatar").textContent = (activeAcc.email || "M")[0].toUpperCase();
+          document.getElementById("heroAccEgress").textContent = activeAcc.egress || "direct";
+          document.getElementById("heroAccHealth").textContent = activeAcc.health || "healthy";
+          document.getElementById("radarReqCount").textContent = numStr(activeAcc.requestCount);
+          document.getElementById("radarErrCount").textContent = numStr(activeAcc.errorCount);
+
+          if (activeAcc.refreshScheduledAt) {
+            document.getElementById("radarNextRefresh").textContent = new Date(activeAcc.refreshScheduledAt).toLocaleTimeString();
+          } else {
+            document.getElementById("radarNextRefresh").textContent = "就绪";
+          }
+
+          if (countdownInterval) clearInterval(countdownInterval);
+          const updateTimer = () => {
+            document.getElementById("radarTokenClock").textContent = countdownStr(activeAcc.expiresAt);
+          };
+          updateTimer();
+          countdownInterval = setInterval(updateTimer, 1000);
+        } else {
+          document.getElementById("heroAccEmail").textContent = "未配置活动主账号";
+          document.getElementById("heroAccName").textContent = "请点击右上角添加";
+          document.getElementById("radarTokenClock").textContent = "--:--";
+          document.getElementById("radarNextRefresh").textContent = "--:--";
+        }
+      }
+
+      // 渲染账号池表格
+      function renderAccountsList() {
+        const tbody = document.getElementById("accountsListTbody");
+        if (!tbody) return;
+        if (accountsState.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-dim)">暂未配置微软账号，点击上方添加。</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = "";
+        accountsState.forEach((a) => {
+          const tr = document.createElement("tr");
+
+          let statusBadge = '<span class="badge-glass badge-emerald">正常</span>';
+          if (a.active) statusBadge = '<span class="badge-glass badge-blue">主力服务中</span>';
+          else if (a.health === "cooldown") statusBadge = '<span class="badge-glass badge-amber">429 冷却中</span>';
+          else if (a.health === "isolated") statusBadge = '<span class="badge-glass badge-rose">已隔离</span>';
+
+          const tokenBadge = a.tokenState === "valid"
+            ? '<span class="badge-glass badge-emerald">有效</span>'
+            : `<span class="badge-glass badge-amber">${escapeHtml(a.tokenState || "未知")}</span>`;
+
+          tr.innerHTML = `
+            <td>${statusBadge}</td>
+            <td>
+              <div style="font-weight:700;color:var(--text-main)">${escapeHtml(a.email)}</div>
+              <div class="mono-tag" style="font-size:11px;color:var(--text-dim)">${escapeHtml(a.id.slice(0, 14))}...</div>
+            </td>
+            <td>${escapeHtml(a.displayName || "--")}</td>
+            <td><span class="badge-glass badge-blue">${escapeHtml(a.egress || "direct")}</span></td>
+            <td>${tokenBadge}</td>
+            <td>${numStr(a.requestCount)} / <span style="color:var(--accent-rose)">${numStr(a.errorCount)}</span></td>
+            <td>入: ${tokenStr(a.tokenIn)} &bull; 出: ${tokenStr(a.tokenOut)}</td>
+            <td>
+              <div style="display:flex;gap:6px;align-items:center">
+                ${a.tokenState === "auth_failed"
+                  ? `<button class="btn btn-glass btn-sm btn-reauthorize" data-id="${escapeHtml(a.id)}">重新授权</button>`
+                  : a.active
+                    ? `<button class="btn btn-glass btn-sm btn-reauth" data-id="${escapeHtml(a.id)}">刷新令牌</button>`
+                    : '<span style="font-size:11px;color:var(--text-dim)">待命账号无需手动刷新</span>'}
+                <button class="btn btn-danger-glass btn-sm btn-del" data-id="${escapeHtml(a.id)}">删除</button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll(".btn-reauthorize").forEach((b) => {
+          b.addEventListener("click", () => {
+            openModal("modalOAuthWizard");
+            toast("请使用同一个微软账号重新完成授权", "info");
+          });
+        });
+
+        tbody.querySelectorAll(".btn-reauth").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-id");
+            b.disabled = true;
+            try {
+              const res = await fetch("/api/accounts/refresh", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id }),
+              });
+              const data = await res.json().catch(() => null);
+              if (!res.ok) {
+                const code = data?.error?.code || "";
+                const messageByCode = {
+                  account_not_active: "只有当前主力账号可以手动刷新令牌",
+                  token_refresh_authorization_failed: "微软授权已失效，请重新授权该账号",
+                  token_refresh_rate_limited: "微软暂时限制了令牌刷新，请稍后重试",
+                  token_refresh_unavailable: "微软令牌服务暂时不可用，请稍后重试",
+                  account_credential_error: "账号加密凭据不可用，请重新授权该账号",
+                };
+                if (["token_refresh_authorization_failed", "account_credential_error"].includes(code)) {
+                  openModal("modalOAuthWizard");
+                }
+                throw new Error(messageByCode[code] || data?.error?.message || `刷新失败（HTTP ${res.status}）`);
+              }
+              toast("微软凭据已刷新成功！", "success");
+              await syncAccounts();
+            } catch (e) {
+              toast(e.message, "error");
+            } finally {
+              b.disabled = false;
+            }
+          });
+        });
+
+        tbody.querySelectorAll(".btn-del").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-id");
+            if (!confirm("确认彻底移除该微软账号？")) return;
+            try {
+              const res = await fetch("/api/accounts/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id }),
+              });
+              if (!res.ok) throw new Error("删除失败");
+              toast("账号已安全移除", "success");
+              syncAccounts();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          });
+        });
+      }
+
+      // 拉取密钥
+      async function loadKeys() {
+        const tbody = document.getElementById("keysListTbody");
+        if (!tbody) return;
+        try {
+          const res = await fetch("/api/admin/keys");
+          if (!res.ok) throw new Error("拉取密钥失败");
+          const data = await res.json();
+          const list = data.keys || [];
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim)">暂未创建 API 密钥</td></tr>';
+            return;
+          }
+          tbody.innerHTML = "";
+          list.forEach((k) => {
+            const tr = document.createElement("tr");
+            const isRev = Boolean(k.revoked);
+            const statusTag = isRev 
+              ? '<span class="badge-glass badge-rose">已撤销</span>'
+              : '<span class="badge-glass badge-emerald">生效中</span>';
+
+            tr.innerHTML = `
+              <td>${statusTag}</td>
+              <td><strong style="color:var(--text-main)">${escapeHtml(k.name || "无名称")}</strong></td>
+              <td><span class="mono-tag">${escapeHtml(k.prefix)}...</span></td>
+              <td>${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : "永久"}</td>
+              <td>${new Date(k.createdAt).toLocaleDateString()}</td>
+              <td>${k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : "从未使用"}</td>
+              <td>
+                ${!isRev ? `<button class="btn btn-danger-glass btn-sm btn-revoke-key" data-id="${escapeHtml(k.id)}">撤销</button>` : `<span style="color:var(--text-dim)">已作废</span>`}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          tbody.querySelectorAll(".btn-revoke-key").forEach((b) => {
+            b.addEventListener("click", async () => {
+              if (!confirm("撤销后使用此密钥的客户端将立即失效，确认撤销？")) return;
+              const id = b.getAttribute("data-id");
+              try {
+                const r = await fetch(`/api/admin/keys?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+                if (!r.ok) throw new Error("撤销失败");
+                toast("密钥已撤销", "success");
+                loadKeys();
+              } catch (e) {
+                toast(e.message, "error");
+              }
+            });
+          });
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      }
+
+      // 拉取有界、脱敏的请求诊断记录
+      async function loadLogs() {
+        try {
+          const res = await fetch("/api/admin/debug/logs?limit=100");
+          if (!res.ok) return;
+          const data = await res.json();
+          logsState = data.records || [];
+
+          // 渲染仪表盘简要
+          const dashBox = document.getElementById("dashRecentLogsBox");
+          if (dashBox) {
+            dashBox.innerHTML = "";
+            const recent = logsState.slice(0, 3);
+            if (recent.length === 0) {
+              dashBox.innerHTML = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:14px">暂无诊断记录</div>';
+            } else {
+              recent.forEach((l) => {
+                const item = document.createElement("div");
+                item.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card-sub-bg);border:1px solid var(--table-border);border-radius:var(--radius-md);font-size:12px";
+                item.innerHTML = `
+                  <div>
+                    <span class="badge-glass ${l.level === "error" ? "badge-rose" : "badge-blue"}">${escapeHtml(l.method || "HTTP")}</span>
+                    <span style="color:var(--text-main);margin-left:8px">${escapeHtml(l.path || "-")} · ${escapeHtml(l.code || String(l.status || ""))}</span>
+                  </div>
+                  <span style="color:var(--text-dim)">${new Date(l.at || Date.now()).toLocaleTimeString()}</span>
+                `;
+                dashBox.appendChild(item);
+              });
+            }
+          }
+
+          // 渲染全部日志
+          const fullTbody = document.getElementById("fullLogsTbody");
+          if (fullTbody) {
+            if (logsState.length === 0) {
+              fullTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">暂无诊断记录</td></tr>';
+            } else {
+              fullTbody.innerHTML = "";
+              logsState.forEach((l) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                  <td class="mono-tag" style="font-size:11px">${new Date(l.at || Date.now()).toISOString()}</td>
+                  <td><span class="badge-glass ${l.level === "error" ? "badge-rose" : "badge-blue"}">${escapeHtml(l.level || "info")}</span></td>
+                  <td><strong>${escapeHtml(l.method || "--")}</strong></td>
+                  <td>${escapeHtml(l.path || "--")} · HTTP ${escapeHtml(String(l.status ?? "--"))}</td>
+                  <td>${escapeHtml(l.code || "--")} · ${numStr(l.durationMs)} ms</td>
+                `;
+                fullTbody.appendChild(tr);
+              });
+            }
+          }
+        } catch (e) {}
+      }
+
+      // OAuth PKCE 流程绑定
+      let oauthState = null;
+      document.getElementById("btnQuickAddAccount")?.addEventListener("click", () => openModal("modalOAuthWizard"));
+      document.getElementById("btnAddAccountFromPoolView")?.addEventListener("click", () => openModal("modalOAuthWizard"));
+
+      document.getElementById("btnStartOAuthFlow")?.addEventListener("click", async () => {
+        try {
+          const res = await fetch("/api/auth/start");
+          if (!res.ok) throw new Error("无法初始化授权流程");
+          const data = await res.json();
+          oauthState = data.state;
+          if (!data.url) throw new Error("授权服务未返回登录地址");
+          window.open(data.url, "_blank", "noopener,noreferrer,width=600,height=750");
+          toast("已在新窗口打开微软登录页面，授权后请复制地址栏 URL 粘贴至第三步", "info");
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      });
+
+      document.getElementById("btnFinishOAuth")?.addEventListener("click", async () => {
+        const rawUrl = document.getElementById("iptOAuthCallbackUrl").value.trim();
+        if (!rawUrl) return toast("请粘贴重定向后的完整 URL", "error");
+        if (!oauthState) return toast("请先点击第一步初始化授权", "error");
+
+        try {
+          const res = await fetch(`/api/auth/callback?url=${encodeURIComponent(rawUrl)}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error?.message || "兑换 Token 失败");
+          toast("微软账号接入成功！已接入调度池", "success");
+          closeModal("modalOAuthWizard");
+          oauthState = null;
+          document.getElementById("iptOAuthCallbackUrl").value = "";
+          syncAccounts();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      });
+
+      // API Key 创建绑定
+      document.getElementById("btnCreateKeyModal")?.addEventListener("click", () => openModal("modalCreateNewKey"));
+      document.getElementById("btnDoCreateKey")?.addEventListener("click", async () => {
+        const submit = document.getElementById("btnDoCreateKey");
+        if (submit.disabled) return;
+        const name = document.getElementById("iptNewKeyAlias").value.trim() || "default";
+        const days = parseInt(document.getElementById("selNewKeyDays").value, 10);
+        if (!Number.isInteger(days) || days < 0) return toast("请选择有效期限", "error");
+        submit.disabled = true;
+        try {
+          const res = await fetch("/api/admin/keys", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, days }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error?.message || "创建密钥失败");
+          closeModal("modalCreateNewKey");
+          document.getElementById("iptNewKeyAlias").value = "";
+          
+          document.getElementById("txtRevealedKey").textContent = data.key;
+          openModal("modalKeyExposed");
+          loadKeys();
+        } catch (e) {
+          toast(e.message, "error");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+
+      document.getElementById("btnCopyRawKey")?.addEventListener("click", () => {
+        const key = document.getElementById("txtRevealedKey").textContent;
+        navigator.clipboard.writeText(key).then(() => toast("密钥已复制到剪贴板！", "success"));
+      });
+
+      // 密码修改
+      document.getElementById("btnDoChangePwd")?.addEventListener("click", async () => {
+        const oldP = document.getElementById("iptOldPwd").value;
+        const p1 = document.getElementById("iptNewPwd1").value;
+        const p2 = document.getElementById("iptNewPwd2").value;
+        if (!oldP || !p1 || !p2) return toast("请完整填写表单", "error");
+        if (p1.length < 8) return toast("新密码长度需至少 8 位", "error");
+        if (p1 !== p2) return toast("两次输入的新密码不一致", "error");
+
+        try {
+          const res = await fetch("/api/admin/change-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ current_password: oldP, new_password: p1 }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data?.error?.message || "密码修改失败");
+          }
+          toast("密码已成功更新！请重新登录", "success");
+          closeModal("modalChangePassword");
+          setTimeout(() => window.location.replace("/login"), 1000);
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      });
+
+      // 重置指标
+      document.getElementById("btnResetMetrics")?.addEventListener("click", async () => {
+        if (!confirm("确认将全部请求与 Token 统计归零？此操作不可逆。")) return;
+        try {
+          const res = await fetch("/api/admin/reset-stats", { method: "POST" });
+          if (!res.ok) throw new Error("重置失败");
+          toast("统计指标已清空", "success");
+          syncAccounts();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      });
+
+      // 登出
+      document.getElementById("btnSidebarLogout")?.addEventListener("click", async () => {
+        await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
+        window.location.replace("/login");
+      });
+
+      // 手动刷新
+      document.getElementById("btnRefreshData")?.addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        const ok = await syncAccounts();
+        await loadLogs();
+        if (ok) toast("账号和诊断数据已同步", "success");
+        button.disabled = false;
+      });
+      document.getElementById("btnRefreshLogs")?.addEventListener("click", () => {
+        loadLogs();
+        toast("日志流已更新", "info");
+      });
+
+      async function initialize() {
+        try {
+          const res = await fetch("/api/admin/session");
+          const session = res.ok ? await res.json() : null;
+          if (!session?.authenticated || session.must_change_password) {
+            window.location.replace("/login");
+            return;
+          }
+          await Promise.all([syncHealth(), syncAccounts(), loadLogs()]);
+        } catch {
+          window.location.replace("/login");
+        }
+      }
+
+      initialize();
+    })();
+  </script>
+</body>
+</html>
