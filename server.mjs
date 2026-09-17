@@ -119,6 +119,8 @@ const args = [
 
 console.log(`[server] Starting M365 Gateway server on ${host}:${port}...`);
 
+const defaultCertFile = existsSync("/etc/ssl/certs/ca-certificates.crt") ? "/etc/ssl/certs/ca-certificates.crt" : undefined;
+
 const child = spawn(executable, args, {
   cwd: projectRoot,
   env: {
@@ -128,6 +130,9 @@ const child = spawn(executable, args, {
     WRANGLER_HOME: wranglerHome,
     MINIFLARE_HOME: miniflareHome,
     TMPDIR: runtimeRoot,
+    SSL_CERT_FILE: process.env.SSL_CERT_FILE || defaultCertFile,
+    SSL_CERT_DIR: process.env.SSL_CERT_DIR || (existsSync("/etc/ssl/certs") ? "/etc/ssl/certs" : undefined),
+    NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS || defaultCertFile,
   },
   stdio: "inherit",
   shell: false,
