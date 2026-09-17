@@ -313,6 +313,11 @@ async function oauthRoute(request: Request, env: Env, url: URL): Promise<Respons
         const callback = new URL(pasted);
         code ||= callback.searchParams.get("code") ?? "";
         oauthState ||= callback.searchParams.get("state") ?? "";
+        if (!code || !oauthState) {
+          const hashParams = new URLSearchParams(callback.hash.replace(/^#/u, ""));
+          code ||= hashParams.get("code") ?? "";
+          oauthState ||= hashParams.get("state") ?? "";
+        }
       } catch {
         return error(400, "invalid_callback_url", "invalid callback URL");
       }
@@ -326,7 +331,12 @@ async function oauthRoute(request: Request, env: Env, url: URL): Promise<Respons
     } catch (cause) {
       const codeValue = cause instanceof Error ? cause.message : "OAUTH_FAILED";
       if (codeValue === "ACCOUNT_LIMIT_REACHED") return error(409, "account_limit_reached", `this Cloudflare deployment allows up to ${Number(env.MAX_ACCOUNTS) || 1} accounts`);
-      return error(400, "oauth_failed", "Microsoft authorization could not be completed");
+      if (codeValue === "OAUTH_STATE_INVALID") return error(400, "oauth_state_invalid", "授权状态已失效或已被使用，请重新点击第 1 步打开微软授权页并登录");
+      if (codeValue === "MICROSOFT_REFRESH_TOKEN_REJECTED" || codeValue === "MICROSOFT_TOKEN_EXCHANGE_FAILED") {
+        return error(400, "token_exchange_failed", "微软拒绝了令牌兑换（授权码已过期、已被使用或客户端 ID 不匹配），请点击第 1 步重新获取授权链接登录");
+      }
+      if (codeValue === "MICROSOFT_TOKEN_SERVICE_UNAVAILABLE") return error(503, "token_service_unavailable", "微软令牌服务暂时不可用，请稍后重试");
+      return error(400, "oauth_failed", `Microsoft authorization could not be completed: ${codeValue}`);
     }
   }
   return error(404, "not_found", "OAuth endpoint not found");
