@@ -50,7 +50,7 @@
     "MIGRATION_ENABLED": "false",
     "MIGRATION_CANDIDATE_TAG": "account-migration-candidate",
     "DIRECT_NATIVE_TOOL_MODE": "true",
-    "M365_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+    "M365_CLIENT_ID": "c0ab8ce9-e9a0-42e7-b064-33d422df41f1",
     "M365_AUTHORITY": "https://login.microsoftonline.com/common",
     "M365_REDIRECT_URI": "https://login.microsoftonline.com/common/oauth2/nativeclient",
     "M365_SCOPE": "openid profile offline_access https://substrate.office.com/sydney/M365Chat.Read https://substrate.office.com/sydney/sydney.readwrite"

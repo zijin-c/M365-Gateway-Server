@@ -51,6 +51,7 @@ const runtimeVars = {
   DIRECT_NATIVE_TOOL_MODE: process.env.DIRECT_NATIVE_TOOL_MODE || "true",
   DATA_ENCRYPTION_KEY: process.env.DATA_ENCRYPTION_KEY.trim(),
   BOOTSTRAP_ADMIN_PASSWORD: process.env.BOOTSTRAP_ADMIN_PASSWORD.trim(),
+  M365_CLIENT_ID: process.env.M365_CLIENT_ID?.trim() || "c0ab8ce9-e9a0-42e7-b064-33d422df41f1",
 };
 
 const optionalVars = [
