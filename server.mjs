@@ -51,7 +51,9 @@ const runtimeVars = {
   DIRECT_NATIVE_TOOL_MODE: process.env.DIRECT_NATIVE_TOOL_MODE || "true",
   DATA_ENCRYPTION_KEY: process.env.DATA_ENCRYPTION_KEY.trim(),
   BOOTSTRAP_ADMIN_PASSWORD: process.env.BOOTSTRAP_ADMIN_PASSWORD.trim(),
-  M365_CLIENT_ID: process.env.M365_CLIENT_ID?.trim() || "c0ab8ce9-e9a0-42e7-b064-33d422df41f1",
+  M365_CLIENT_ID: (process.env.M365_CLIENT_ID?.trim() && process.env.M365_CLIENT_ID.trim() !== "00000000-0000-0000-0000-000000000000")
+    ? process.env.M365_CLIENT_ID.trim()
+    : "c0ab8ce9-e9a0-42e7-b064-33d422df41f1",
 };
 
 const optionalVars = [
@@ -72,7 +74,11 @@ const optionalVars = [
 
 for (const key of optionalVars) {
   if (process.env[key] !== undefined && process.env[key] !== "") {
-    runtimeVars[key] = process.env[key];
+    let val = process.env[key];
+    if (key === "M365_CLIENT_ID" && (val.trim() === "00000000-0000-0000-0000-000000000000" || val.trim() === "")) {
+      val = "c0ab8ce9-e9a0-42e7-b064-33d422df41f1";
+    }
+    runtimeVars[key] = val;
   }
 }
 

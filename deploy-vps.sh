@@ -35,6 +35,10 @@ if [ ! -f ".env" ]; then
     fi
 else
     echo -e "${GREEN}[1/4] 检测到已存在 .env 配置文件。${NC}"
+    if grep -q "00000000-0000-0000-0000-000000000000" .env 2>/dev/null; then
+        sed -i 's/M365_CLIENT_ID=00000000-0000-0000-0000-000000000000/M365_CLIENT_ID=c0ab8ce9-e9a0-42e7-b064-33d422df41f1/' .env
+        echo -e "${GREEN}  已自动升级 .env 中的客户端 ID 为可用公用 ID。${NC}"
+    fi
 fi
 
 # 2. 读取配置
