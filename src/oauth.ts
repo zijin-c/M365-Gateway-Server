@@ -48,9 +48,12 @@ async function tokenRequest(env: Env, form: URLSearchParams): Promise<OAuthToken
       body: form,
       signal: AbortSignal.timeout(TOKEN_REQUEST_TIMEOUT_MS),
     });
-  } catch {
-    // Fetch errors can contain the authority URL or request internals. Keep
-    // those out of both the API response and the durable account diagnostics.
+  } catch (cause) {
+    console.error(JSON.stringify({
+      event: "oauth_fetch_network_error",
+      message: cause instanceof Error ? cause.message : String(cause),
+      cause: cause instanceof Error && cause.cause ? String(cause.cause) : undefined,
+    }));
     throw new Error("MICROSOFT_TOKEN_SERVICE_UNAVAILABLE");
   }
   let payload: MicrosoftTokenResponse;
@@ -63,7 +66,12 @@ async function tokenRequest(env: Env, form: URLSearchParams): Promise<OAuthToken
     payload = {};
   }
   if (!response.ok || payload.error || !payload.access_token) {
-    console.error(JSON.stringify({ event: "oauth_token_failed", status: response.status, code: payload.error ?? "empty_token" }));
+    console.error(JSON.stringify({
+      event: "oauth_token_failed",
+      status: response.status,
+      code: payload.error ?? "empty_token",
+      description: payload.error_description ?? "",
+    }));
     throw new Error(tokenFailure(response, payload));
   }
   const accessClaims = jwtClaims(payload.access_token);
